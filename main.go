@@ -1,6 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+
 	"github.com/candy12t/bank"
 )
 
@@ -14,5 +19,30 @@ func main() {
 			Phone:   "(213) 555 0147",
 		},
 		Number: 1001,
+	}
+
+	http.HandleFunc("/statement", statement)
+	log.Fatal(http.ListenAndServe("localhost:8000", nil))
+}
+
+func statement(w http.ResponseWriter, req *http.Request) {
+	// クエリ文字列からパラメータを取得
+	// 例: https://hogehoge.com/?number=123 -> 123
+	numberqs := req.URL.Query().Get("number")
+
+	if numberqs == "" {
+		fmt.Fprintf(w, "Account number is missing!")
+		return
+	}
+
+	if number, err := strconv.ParseFloat(numberqs, 64); err != nil {
+		fmt.Fprintf(w, "Inavlid account number!")
+	} else {
+		account, ok := accounts[number]
+		if !ok {
+			fmt.Fprintf(w, "Account with number %v can't be found!", number)
+		} else {
+			fmt.Fprintf(w, account.Statement())
+		}
 	}
 }
