@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,25 +10,44 @@ import (
 	"github.com/candy12t/bank"
 )
 
-var accounts = map[float64]*bank.Account{}
+// CustomAccount ...
+type CustomAccount struct {
+	*bank.Account
+}
 
-func main() {
-	accounts[1001] = &bank.Account{
-		Customer: bank.Customer{
-			Name:    "John",
-			Address: "Los Angeles, California",
-			Phone:   "(213) 555 0147",
-		},
-		Number: 1001,
+// Statement ...
+func (c *CustomAccount) Statement() string {
+	json, err := json.Marshal(c)
+	if err != nil {
+		return err.Error()
 	}
 
-	accounts[1002] = &bank.Account{
-		Customer: bank.Customer{
-			Name:    "John",
-			Address: "Los Angeles, California",
-			Phone:   "(213) 555 0147",
+	return string(json)
+}
+
+var accounts = map[float64]*CustomAccount{}
+
+func main() {
+	accounts[1001] = &CustomAccount{
+		Account: &bank.Account{
+			Customer: bank.Customer{
+				Name:    "John",
+				Address: "Los Angeles, California",
+				Phone:   "(213) 555 0147",
+			},
+			Number: 1001,
 		},
-		Number: 1002,
+	}
+
+	accounts[1002] = &CustomAccount{
+		Account: &bank.Account{
+			Customer: bank.Customer{
+				Name:    "John",
+				Address: "Los Angeles, California",
+				Phone:   "(213) 555 0147",
+			},
+			Number: 1002,
+		},
 	}
 
 	http.HandleFunc("/statement", statement)
@@ -54,7 +74,7 @@ func statement(w http.ResponseWriter, req *http.Request) {
 		if !ok {
 			fmt.Fprintf(w, "Account with number %v can't be found!", number)
 		} else {
-			fmt.Fprintf(w, account.Statement())
+			json.NewEncoder(w).Encode(bank.Statement(account))
 		}
 	}
 }
@@ -137,7 +157,7 @@ func transfer(w http.ResponseWriter, req *http.Request) {
 		} else if accountB, ok := accounts[dest]; !ok {
 			fmt.Fprintf(w, "Account with number %v can't be found!", dest)
 		} else {
-			err := accountA.Transfer(amount, accountB)
+			err := accountA.Transfer(amount, accountB.Account)
 			if err != nil {
 				fmt.Fprintf(w, "%v", err)
 			} else {
